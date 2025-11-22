@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Pocket Council Backend"
 
     # Storage
-    database_url: str = "sqlite:///./storage/app.db"
+    database_url: str = "sqlite:///./storage/app.db"  # override to postgres for docker: postgresql+psycopg://pcouncil:pcouncil@localhost:5432/pcouncil
     storage_path: str = "storage/uploads"
 
     # LLM / speech-to-text
