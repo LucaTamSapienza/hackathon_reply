@@ -1,0 +1,9 @@
+fastapi==0.115.2
+uvicorn[standard]==0.30.6
+sqlmodel==0.0.21
+pydantic-settings==2.5.2
+python-multipart==0.0.9
+openai==1.52.0
+langchain==0.2.16
+langchain-openai==0.1.23
+tenacity==8.5.0
