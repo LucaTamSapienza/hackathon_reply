@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pocket Council Test Client</title>
+  <style>
+    :root {
+      --bg: #050910;
+      --panel: #0d1522;
+      --panel-2: #0f1a2c;
+      --border: #1f2d44;
+      --accent: #4adf88;
+      --accent-2: #7cc8ff;
+      --text: #e8edf5;
+      --muted: #9aafc8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 16px;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(74, 223, 136, 0.08), transparent 25%),
+                  radial-gradient(circle at 80% 0%, rgba(124, 200, 255, 0.08), transparent 35%),
+                  linear-gradient(135deg, #04070f 0%, #0a1221 50%, #060a14 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    h1 { margin: 0 0 4px 0; }
+    p { margin: 0 0 8px 0; color: var(--muted); }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    label { display: block; font-size: 0.9rem; color: var(--muted); margin-bottom: 4px; }
+    input, button, textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.95rem;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #03101c;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(74, 223, 136, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    button:active { transform: translateY(1px); box-shadow: 0 4px 12px rgba(74, 223, 136, 0.25); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row > * { flex: 1; }
+    .status { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
+    .log {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 120px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--text);
+    }
+    .output { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.03); }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
+    audio { width: 100%; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Pocket Council Test Client</h1>
+  <p>Use this page to hit the backend: create patient → start consult → send text or audio → view agent outputs. Run via <code>python -m http.server</code> for best results.</p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Base URL</label>
+        <input id="baseUrl" value="http://127.0.0.1:8000" />
+      </div>
+      <div style="flex:0 0 160px;">
+        <label>&nbsp;</label>
+        <button onclick="ping()">Check /health</button>
+      </div>
+    </div>
+    <div class="status" id="healthStatus">Not checked.</div>
+  </div>
+
+  <div class="grid" style="margin-top:12px;">
+    <div class="card">
+      <h3>Patient</h3>
+      <label>Full name</label>
+      <input id="patientName" placeholder="Jane Doe" />
+      <label>Allergies</label>
+      <input id="patientAllergies" placeholder="penicillin" />
+      <button onclick="createPatient()">Create Patient</button>
+      <div class="status">Patient ID: <span id="patientIdLabel">–</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Consultation</h3>
+      <label>Patient ID</label>
+      <input id="patientId" placeholder="use patient id" />
+      <label>Presenting complaint</label>
+      <input id="complaint" placeholder="chest discomfort" />
+      <button onclick="startConsult()">Start Consultation</button>
+      <div class="status">Consult ID: <span id="consultIdLabel">–</span></div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:12px;">
+    <div class="card">
+      <h3>Send Transcript (text)</h3>
+      <label>Consultation ID</label>
+      <input id="consultIdText" placeholder="consult id" />
+      <label>Transcript text</label>
+      <textarea id="transcriptText" placeholder="What the patient said..."></textarea>
+      <button onclick="sendText()">Send Text</button>
+    </div>
+
+    <div class="card">
+      <h3>Record & Send Audio</h3>
+      <label>Consultation ID</label>
+      <input id="consultIdAudio" placeholder="consult id" />
+      <div class="row" style="margin:6px 0;">
+        <button id="recordBtn" onclick="toggleRecording()">Start Recording</button>
+        <button id="sendBtn" onclick="sendAudio()" disabled>Send Audio</button>
+      </div>
+      <div class="status" id="recordStatus">Not recording.</div>
+      <audio id="preview" controls style="display:none;"></audio>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3>Agent Outputs</h3>
+    <div id="outputs"></div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3>Log</h3>
+    <div class="log" id="log">Awaiting actions…</div>
+  </div>
+
+  <script>
+    let mediaRecorder;
+    let chunks = [];
+    let patientId = null;
+    let consultId = null;
+
+    const logEl = document.getElementById("log");
+    const outputsEl = document.getElementById("outputs");
+    const recordBtn = document.getElementById("recordBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusEl = document.getElementById("recordStatus");
+    const previewEl = document.getElementById("preview");
+    const healthStatus = document.getElementById("healthStatus");
+
+    function base() { return document.getElementById("baseUrl").value.replace(/\\/$/, ""); }
+    function log(msg, obj) {
+      const text = obj ? msg + "\\n" + JSON.stringify(obj, null, 2) : msg;
+      logEl.textContent = text;
+    }
+    function setIds() {
+      document.getElementById("patientIdLabel").textContent = patientId ?? "–";
+      document.getElementById("patientId").value = patientId ?? "";
+      document.getElementById("consultIdLabel").textContent = consultId ?? "–";
+      document.getElementById("consultIdText").value = consultId ?? "";
+      document.getElementById("consultIdAudio").value = consultId ?? "";
+    }
+    async function fetchJson(url, opts = {}) {
+      const resp = await fetch(url, opts);
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${txt}`);
+      }
+      return resp.json();
+    }
+
+    async function ping() {
+      try {
+        const data = await fetchJson(`${base()}/health`);
+        healthStatus.textContent = "API reachable ✓";
+        log("Healthcheck OK", data);
+      } catch (e) {
+        healthStatus.textContent = "API not reachable. Check Base URL / server.";
+        log("Healthcheck failed: " + e.message);
+      }
+    }
+
+    async function createPatient() {
+      try {
+        const data = await fetchJson(`${base()}/patients`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: document.getElementById("patientName").value || "Jane Doe",
+            allergies: document.getElementById("patientAllergies").value || null
+          })
+        });
+        patientId = data.id;
+        setIds();
+        log("Created patient", data);
+      } catch (e) {
+        log("Create patient failed: " + e.message);
+      }
+    }
+
+    async function startConsult() {
+      const pid = Number(document.getElementById("patientId").value);
+      if (!pid) return log("Patient ID required");
+      try {
+        const data = await fetchJson(`${base()}/consultations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patient_id: pid,
+            presenting_complaint: document.getElementById("complaint").value || "chest discomfort"
+          })
+        });
+        consultId = data.id;
+        setIds();
+        log("Started consultation", data);
+      } catch (e) {
+        log("Start consultation failed: " + e.message);
+      }
+    }
+
+    async function sendText() {
+      const cid = Number(document.getElementById("consultIdText").value);
+      if (!cid) return log("Consultation ID required.");
+      const text = document.getElementById("transcriptText").value;
+      if (!text) return log("Transcript text required.");
+      try {
+        const data = await fetchJson(`${base()}/consultations/${cid}/transcript`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ speaker: "patient", text })
+        });
+        renderOutputs(data.outputs || []);
+        log("Text sent", data);
+      } catch (e) {
+        log("Send text failed: " + e.message);
+      }
+    }
+
+    async function toggleRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        recordBtn.textContent = "Start Recording";
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        chunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          statusEl.textContent = "Recording stopped. Ready to send.";
+          sendBtn.disabled = false;
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          previewEl.src = URL.createObjectURL(blob);
+          previewEl.style.display = "block";
+        };
+        mediaRecorder.start();
+        statusEl.textContent = "Recording…";
+        recordBtn.textContent = "Stop Recording";
+        sendBtn.disabled = true;
+      } catch (e) {
+        log("Mic access failed: " + e.message);
+      }
+    }
+
+    async function sendAudio() {
+      if (!chunks.length) return log("No audio recorded.");
+      const cid = Number(document.getElementById("consultIdAudio").value);
+      if (!cid) return log("Consultation ID required.");
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("file", blob, "sample.webm");
+      try {
+        const data = await fetchJson(`${base()}/consultations/${cid}/audio`, {
+          method: "POST",
+          body: formData
+        });
+        renderOutputs(data.outputs || []);
+        log("Audio sent", data);
+        statusEl.textContent = "Sent. Record again to send more.";
+        sendBtn.disabled = true;
+        chunks = [];
+      } catch (e) {
+        log("Send audio failed: " + e.message);
+      }
+    }
+
+    function renderOutputs(list) {
+      outputsEl.innerHTML = "";
+      if (!list.length) {
+        outputsEl.innerHTML = "<div class='status'>No outputs yet.</div>";
+        return;
+      }
+      list.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "output";
+        div.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <strong>${item.agent || "Agent"}</strong>
+            <span class="pill">${item.category || "insight"}</span>
+          </div>
+          <div>${(item.content || "").replace(/\\n/g, "<br>")}</div>
+        `;
+        outputsEl.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>

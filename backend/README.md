@@ -9,6 +9,7 @@ Reference for the Pocket Council multi-agent backend (FastAPI + LangChain/OpenAI
 - `app/agents/` – Persona definitions (Scribe, Dr. House, Guardian) and orchestrator.
 - `app/services/` – Domain helpers for consultation flow, transcription, document storage, and medical records.
 - `storage/` – SQLite DB and uploaded files (git-ignored).
+- `../frontend/` – Optional Next.js client to exercise the backend (create patient, start consult, send text/audio).
 
 ## Running
 ```bash
@@ -22,6 +23,14 @@ pip install -r requirements.txt
 #   export DATABASE_URL="postgresql+psycopg://pcouncil:pcouncil@localhost:5432/pcouncil"
 # SQLite (default): do nothing
 uvicorn app.main:app --reload
+```
+
+## Frontend test client (optional)
+```
+cd ../frontend
+npm install
+npm run dev   # runs on http://localhost:3001
+# set Base URL in the page to your backend (e.g., http://127.0.0.1:8000), then create patient → start consult → send text/audio
 ```
 
 ## Agent Flow

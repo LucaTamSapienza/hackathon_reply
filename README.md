@@ -26,6 +26,17 @@ FastAPI backend skeleton for the multi-agent medical assistant described in `poc
    uvicorn app.main:app --reload
    ```
 
+## Optional Next.js test client
+- Location: `frontend/`
+- Purpose: simple UI to create patients, start consultations, send text/audio to your backend, and view agent outputs.
+- Setup:
+  ```bash
+  cd frontend
+  npm install    # or pnpm/yarn
+  npm run dev    # serves on http://localhost:3001
+  ```
+  In the UI, set Base URL to `http://127.0.0.1:8000` (or your backend URL), then flow through Create Patient → Start Consultation → Send Text / Record & Send Audio.
+
 ## Core Endpoints
 - `POST /patients` – create a patient (optionally include medications).
 - `POST /consultations` – start a consult (with `patient_id` or inline patient payload).
