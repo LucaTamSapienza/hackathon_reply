@@ -33,3 +33,52 @@ FastAPI backend skeleton for the multi-agent medical assistant described in `poc
 - Uses SQLite under `backend/storage/app.db` (relative to the `backend/` folder); change `database_url` in `app/config.py` or `.env`.
 - Agents run via LangChain + OpenAI when `OPENAI_API_KEY` is set; otherwise they fall back to offline summaries.
 - Uploaded audio/docs are saved under `backend/storage/uploads/` (git-ignored).
+
+
+*** 
+
+# Example workflow
+
+
+# Start a consult:
+ Client calls POST /consultations with patient_id (or inline patient payload). We create Consultation and persist any new Patient/Medication rows.
+
+# Attach context: 
+Client can POST docs (/documents/patients/{patient_id}) and structured medical records like labs/exams (/records/patients/{patient_id}) before or during the consult. All of these are tied to the patient in SQLite.
+
+# Ingest speech or text:
+
+## Text:
+ POST /consultations/{id}/transcript with {speaker, text}.
+## Audio:
+POST /consultations/{id}/audio uploads a file → saved to storage/uploads/ → Whisper transcription (if OPENAI_API_KEY set) → same transcript path as text.
+Each chunk becomes a TranscriptChunk row and updates the consult timestamp.
+## Build agent context (in append_transcript_and_run_agents):
+
+Fetch patient allergies/history, medications list, filenames of docs, and the 5 most recent MedicalRecord entries; create short summaries (data preview + text snippet).
+Reconstruct the full transcript (ordered chunks).
+Assemble a context dict passed to agents: allergies, history, medications, documents, records, complaint.
+Run agents (sequential now, parallelizable later):
+
+Orchestrator instantiates LangChain ChatOpenAI if OPENAI_API_KEY exists; otherwise None triggers offline fallbacks.
+For each agent:
+Scribe: Prompt tuned for SOAP; includes transcript + context + records, writes AgentOutput with category="note" and updates Consultation.summary.
+Dr. House: Differential + rationale + discriminating question; sees transcript + meds/allergies + recent records.
+Guardian: Safety checks for allergies/contraindications/interactions; includes history, meds, records.
+Each result is stored as an AgentOutput row with agent name/category/content.
+Retrieve results:
+
+Client can poll GET /consultations/{id}/insights (all AgentOutput entries, most recent first).
+GET /consultations/{id} shows status/summary.
+POST /consultations/{id}/close marks it closed (optionally with a final summary).
+Data access details:
+
+All persistence is via SQLModel (SQLite by default at storage/app.db).
+Uploaded docs are saved to storage/uploads/ with DB rows pointing to the file path.
+Medical records store structured JSON (data) plus text (content_text), so labs can be key/value and imaging can be free text.
+Context construction trims records to a short preview to keep prompts lean; adjust in _patient_context if you want full payloads.
+Agents currently run one after another; you can parallelize in the orchestrator if needed.
+Fallback behavior:
+
+No OPENAI_API_KEY → agents return deterministic placeholder summaries; Whisper returns a placeholder transcription on audio.
+Model errors are caught; we log and emit fallback content instead of failing the API.
