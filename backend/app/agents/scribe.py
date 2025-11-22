@@ -35,3 +35,44 @@ class ScribeAgent(Agent):
                 )
             ),
         ]
+    
+    def fallback(self, transcript: str, context: Dict[str, str]) -> str:
+        """Generate a structured SOAP note even in fallback mode."""
+        complaint = context.get('complaint', 'Not specified')
+        allergies = context.get('allergies', 'None reported')
+        medications = context.get('medications', 'None listed')
+        
+        # Extract key information from transcript
+        transcript_lower = transcript.lower()
+        
+        # Simple keyword extraction for demo purposes
+        symptoms = []
+        if 'headache' in transcript_lower or 'head pain' in transcript_lower:
+            symptoms.append('headaches')
+        if 'nausea' in transcript_lower:
+            symptoms.append('nausea')
+        if 'vision' in transcript_lower or 'visual' in transcript_lower:
+            symptoms.append('visual disturbances')
+        if 'pain' in transcript_lower:
+            symptoms.append('pain')
+        
+        soap_note = f"""SOAP NOTE (Offline Mode)
+
+SUBJECTIVE:
+Chief Complaint: {complaint}
+Patient reports {', '.join(symptoms) if symptoms else 'symptoms as discussed'}.
+
+OBJECTIVE:
+Vital signs and physical examination documented in transcript.
+Allergies: {allergies}
+Current medications: {medications}
+
+ASSESSMENT:
+Clinical impression based on presentation and history as documented.
+
+PLAN:
+Treatment plan and follow-up recommendations discussed with patient.
+
+Note: This is a simplified SOAP note generated in offline mode. For AI-enhanced documentation with full clinical detail extraction, configure OPENAI_API_KEY."""
+        
+        return soap_note

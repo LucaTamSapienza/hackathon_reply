@@ -33,10 +33,8 @@ async def websocket_consultation(
             # Receive audio bytes
             data = await websocket.receive_bytes()
             
-            # Save chunk to disk (Whisper needs a file usually)
-            # In a production real-time system, we'd use a streaming STT service (Deepgram, etc.)
-            # For this MVP, we save the chunk, transcribe it, and delete it.
-            chunk_path = storage_dir / f"ws_chunk_{uuid4().hex}.wav"
+            # Save chunk as webm (browser MediaRecorder default format)
+            chunk_path = storage_dir / f"ws_chunk_{uuid4().hex}.webm"
             with chunk_path.open("wb") as f:
                 f.write(data)
             
@@ -49,11 +47,20 @@ async def websocket_consultation(
                     transcript = TranscriptIn(text=transcript_text, speaker="patient")
                     outputs = append_transcript_and_run_agents(session, consultation_id, transcript, orchestrator)
                     
-                    # Send back results
+                    # Send back results - convert to dict with proper datetime serialization
                     response = {
                         "type": "insight",
                         "transcript": transcript_text,
-                        "outputs": [AgentOutputRead.model_validate(o).model_dump() for o in outputs]
+                        "outputs": [
+                            {
+                                "agent": o.agent,
+                                "category": o.category,
+                                "content": o.content,
+                                "confidence": o.confidence,
+                                "created_at": o.created_at.isoformat() if o.created_at else None
+                            }
+                            for o in outputs
+                        ]
                     }
                     await websocket.send_json(response)
                 else:
@@ -61,6 +68,9 @@ async def websocket_consultation(
                     await websocket.send_json({"type": "ack", "message": "No speech detected"})
 
             except Exception as e:
+                print(f"Error processing audio: {e}")
+                import traceback
+                traceback.print_exc()
                 await websocket.send_json({"type": "error", "message": str(e)})
             finally:
                 # Cleanup chunk
