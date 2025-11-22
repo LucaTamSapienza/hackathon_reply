@@ -1,0 +1,12 @@
+__pycache__/
+.venv/
+.env
+.DS_Store
+*.sqlite
+*.db
+storage/
+uploads/
+backend/storage/
+
+frontend/node_modules
+frontend/.next

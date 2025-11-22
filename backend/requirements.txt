@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+pydantic-settings
+python-multipart
+openai
+langchain
+langchain-openai
+tenacity
+psycopg[binary]
+python-dotenv
