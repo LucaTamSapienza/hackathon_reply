@@ -15,12 +15,12 @@ Reference for the Pocket Council multi-agent backend (FastAPI + LangChain/OpenAI
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# env: copy .env.example to .env and fill in OPENAI_API_KEY (and DATABASE_URL if using Postgres)
 # choose DB: Postgres via docker compose (recommended) or default SQLite
 # Postgres:
 #   docker compose up -d db
 #   export DATABASE_URL="postgresql+psycopg://pcouncil:pcouncil@localhost:5432/pcouncil"
 # SQLite (default): do nothing
-export OPENAI_API_KEY=sk-...   # needed for real LLM/STT; optional for offline fallback
 uvicorn app.main:app --reload
 ```
 

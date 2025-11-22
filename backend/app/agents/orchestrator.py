@@ -24,11 +24,15 @@ class Orchestrator:
     def _model_provider(self):
         if not self.settings.openai_api_key or ChatOpenAI is None:
             return None
-        return ChatOpenAI(
-            api_key=self.settings.openai_api_key,
-            model=self.settings.model_name,
-            temperature=0.1,
-        )
+        try:
+            return ChatOpenAI(
+                api_key=self.settings.openai_api_key,
+                model=self.settings.model_name,
+                temperature=0.1,
+            )
+        except Exception:  # noqa: BLE001
+            # If client construction fails (e.g., old openai package), fall back to offline mode.
+            return None
 
     def run(self, transcript: str, context: Dict[str, str]) -> List[AgentResult]:
         results: List[AgentResult] = []

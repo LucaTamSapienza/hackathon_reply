@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pocket Council Audio Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 1rem; background: #0b1622; color: #e8ecf0; }
+    h1 { margin-bottom: 0.25rem; }
+    section { border: 1px solid #1f2e3a; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: #111c29; }
+    label { display: block; margin: 0.5rem 0 0.25rem; }
+    input, button { padding: 0.5rem; border-radius: 6px; border: 1px solid #243547; background: #0f1824; color: #e8ecf0; width: 100%; box-sizing: border-box; }
+    button { cursor: pointer; margin-top: 0.5rem; }
+    button:hover { background: #1a2740; }
+    .row { display: flex; gap: 0.5rem; }
+    .row input { flex: 1; }
+    pre { background: #0f1824; padding: 0.75rem; border-radius: 6px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Pocket Council Audio Test</h1>
+  <p>Test the backend by creating a patient/consultation and sending recorded audio to <code>/consultations/{id}/audio</code>.</p>
+
+  <section>
+    <h3>Config</h3>
+    <label>Base URL</label>
+    <input id="baseUrl" value="http://127.0.0.1:8000" />
+  </section>
+
+  <section>
+    <h3>Create Patient</h3>
+    <label>Full name</label>
+    <input id="patientName" placeholder="Jane Doe" />
+    <label>Allergies</label>
+    <input id="patientAllergies" placeholder="penicillin" />
+    <button onclick="createPatient()">Create Patient</button>
+  </section>
+
+  <section>
+    <h3>Start Consultation</h3>
+    <label>Patient ID</label>
+    <input id="patientId" placeholder="use the patient id from above" />
+    <label>Presenting complaint</label>
+    <input id="complaint" placeholder="chest discomfort" />
+    <button onclick="startConsult()">Start Consultation</button>
+  </section>
+
+  <section>
+    <h3>Record & Send Audio</h3>
+    <label>Consultation ID</label>
+    <input id="consultId" placeholder="consultation id" />
+    <div class="row">
+      <button id="recordBtn" style="flex:1" onclick="toggleRecording()">Start Recording</button>
+      <button id="sendBtn" style="flex:1" onclick="sendAudio()" disabled>Send Audio</button>
+    </div>
+    <p id="recordStatus">Not recording.</p>
+  </section>
+
+  <section>
+    <h3>Outputs</h3>
+    <pre id="log"></pre>
+  </section>
+
+  <script>
+    let mediaRecorder;
+    let chunks = [];
+    const logEl = document.getElementById("log");
+    function log(msg, obj) {
+      const text = obj ? msg + "\\n" + JSON.stringify(obj, null, 2) : msg;
+      logEl.textContent = text;
+    }
+
+    async function createPatient() {
+      try {
+        const resp = await fetch(`${base()}/patients`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            full_name: document.getElementById("patientName").value || "Jane Doe",
+            allergies: document.getElementById("patientAllergies").value || null
+          })
+        });
+        const data = await resp.json();
+        document.getElementById("patientId").value = data.id;
+        log("Created patient", data);
+      } catch (e) {
+        log("Create patient failed: " + e);
+      }
+    }
+
+    async function startConsult() {
+      try {
+        const resp = await fetch(`${base()}/consultations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patient_id: Number(document.getElementById("patientId").value),
+            presenting_complaint: document.getElementById("complaint").value || "chest discomfort"
+          })
+        });
+        const data = await resp.json();
+        document.getElementById("consultId").value = data.id;
+        log("Started consultation", data);
+      } catch (e) {
+        log("Start consultation failed: " + e);
+      }
+    }
+
+    function base() {
+      return document.getElementById("baseUrl").value.replace(/\\/$/, "");
+    }
+
+    async function toggleRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        chunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          document.getElementById("recordStatus").textContent = "Recording stopped. Ready to send.";
+          document.getElementById("sendBtn").disabled = false;
+        };
+        mediaRecorder.start();
+        document.getElementById("recordStatus").textContent = "Recording...";
+        document.getElementById("recordBtn").textContent = "Stop Recording";
+      } catch (e) {
+        log("Mic access failed: " + e);
+      }
+    }
+
+    async function sendAudio() {
+      if (!chunks.length) {
+        log("No audio recorded.");
+        return;
+      }
+      const consultId = document.getElementById("consultId").value;
+      if (!consultId) {
+        log("Consultation ID is required.");
+        return;
+      }
+      const blob = new Blob(chunks, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("file", blob, "sample.webm");
+      try {
+        const resp = await fetch(`${base()}/consultations/${consultId}/audio`, {
+          method: "POST",
+          body: formData
+        });
+        const data = await resp.json();
+        log("Agent outputs", data);
+        // reset recorder UI
+        document.getElementById("recordBtn").textContent = "Start Recording";
+        document.getElementById("sendBtn").disabled = true;
+        document.getElementById("recordStatus").textContent = "Not recording.";
+        chunks = [];
+      } catch (e) {
+        log("Send audio failed: " + e);
+      }
+    }
+  </script>
+</body>
+</html>

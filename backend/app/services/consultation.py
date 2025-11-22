@@ -109,13 +109,17 @@ def _patient_context(session: Session, consultation: Consultation) -> dict:
         return " | ".join(parts)
 
     records_summary = "; ".join(_record_snippet(r) for r in records) if records else None
+    complaint = consultation.summary
+    if complaint and complaint.startswith("[Scribe] Offline summary"):
+        complaint = None
+
     return {
         "allergies": patient.allergies if patient else None,
         "history": patient.history if patient else None,
         "medications": ", ".join(f"{m.name} ({m.dosage or ''})".strip() for m in medications) if medications else None,
         "documents": ", ".join(doc.filename for doc in documents) if documents else None,
         "records": records_summary,
-        "complaint": consultation.summary,
+        "complaint": complaint,
     }
 
 
@@ -162,7 +166,7 @@ def append_transcript_and_run_agents(
         )
         outputs.append(output)
         session.add(output)
-        if result.category == "note":
+        if result.category == "note" and not result.content.startswith("[Scribe] Offline summary"):
             consultation.summary = result.content
 
     session.commit()
