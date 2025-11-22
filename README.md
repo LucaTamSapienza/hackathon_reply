@@ -9,17 +9,18 @@ FastAPI backend skeleton for the multi-agent medical assistant described in `poc
    python -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
    ```
-2. Choose your database:
+2. Create a `.env` in `backend/` (or export env vars) for secrets:
+   ```bash
+   cd backend
+   cp .env.example .env   # edit with your keys
+   ```
+3. Choose your database:
    - **Dockerized Postgres (recommended for team use):**
      ```bash
      docker compose up -d db
      export DATABASE_URL="postgresql+psycopg://pcouncil:pcouncil@localhost:5432/pcouncil"
      ```
    - **Local SQLite (default, no setup):** do nothing; it uses `storage/app.db`.
-3. Export your OpenAI key (optional but needed for real LLM/STT):
-   ```bash
-   export OPENAI_API_KEY=sk-...
-   ```
 4. Run the API:
    ```bash
    uvicorn app.main:app --reload
