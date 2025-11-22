@@ -10,6 +10,7 @@ from .base import AgentResult
 from .guardian import GuardianAgent
 from .house import HouseAgent
 from .scribe import ScribeAgent
+from .researcher import ResearcherAgent
 
 
 class Orchestrator:
@@ -19,6 +20,7 @@ class Orchestrator:
             ScribeAgent(self._model_provider),
             HouseAgent(self._model_provider),
             GuardianAgent(self._model_provider),
+            ResearcherAgent(self._model_provider),
         ]
 
     def _model_provider(self):

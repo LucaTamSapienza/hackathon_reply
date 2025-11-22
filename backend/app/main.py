@@ -17,6 +17,9 @@ def create_app() -> FastAPI:
     app.include_router(routes_consultations.router)
     app.include_router(routes_documents.router)
     app.include_router(routes_records.router)
+    
+    from .api import routes_websocket
+    app.include_router(routes_websocket.router)
 
     @app.on_event("startup")
     def _startup() -> None:
